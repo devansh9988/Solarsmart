@@ -1,0 +1,533 @@
+**Building the dashboard**
+
+I need to create HTML for a dashboard called "Planet Pulse." It's an environmental news aggregator with a simple visual dashboard. I’ll use a markdown code block, include title and header, and structure the page with sections like filters for topics and regions, a news feed with mock RSS data, and trends with simple charts. Simple inline JS will generate custom bar and line charts, and I’ll make the charts standalone—no external libraries. Should also allow for adding custom RSS URLs. Let's get this done efficiently!
+### Planet Pulse — Environmental news aggregator and visual dashboard
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>planet pulse</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f1b2e;
+      --accent:#39d98a;
+      --accent2:#58a6ff;
+      --text:#e6edf3;
+      --muted:#94a3b8;
+      --border:#1f2937;
+      --warn:#fbbf24;
+      --danger:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background: radial-gradient(1200px 600px at 10% 10%, #090f1a, var(--bg));
+      color:var(--text);
+    }
+    header{
+      padding:28px 20px 12px;
+      text-align:center;
+    }
+    header h1{
+      margin:0;
+      font-size:1.8rem;
+      letter-spacing:0.4px;
+    }
+    header p{margin:8px 0 0;color:var(--muted)}
+    .container{
+      max-width:1200px;
+      margin:20px auto 60px;
+      padding:0 20px;
+      display:grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap:20px;
+    }
+    @media (max-width: 1000px){ .container{ grid-template-columns: 1fr; } }
+    .card{
+      background: linear-gradient(180deg, #0d182a, var(--panel));
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+    .card h2{margin:6px 0 12px;font-size:1.1rem}
+    .sub{
+      font-size:0.9rem;color:var(--muted);margin-bottom:8px;
+    }
+    .controls{
+      display:grid;grid-template-columns: 1fr 1fr 1fr;gap:10px;margin-bottom:12px;
+    }
+    @media (max-width: 700px){ .controls{ grid-template-columns:1fr; } }
+    label{display:block;font-size:0.85rem;color:var(--muted);margin-bottom:6px}
+    select,input{
+      width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);
+      background:#0b1322;color:var(--text);outline:none;
+    }
+    select:focus,input:focus{border-color:#2f3b4f;box-shadow:0 0 0 2px rgba(88,166,255,0.15)}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;background:var(--accent);
+      color:#062b17;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600;
+    }
+    .btn-secondary{background:#19324f;color:#cfe1ff}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .chip{
+      display:inline-flex;align-items:center;gap:8px;border:1px dashed var(--border);
+      background:#0b1322;color:var(--muted);padding:6px 10px;border-radius:999px;font-size:0.8rem;margin-right:6px;margin-top:6px;
+    }
+    .list{
+      display:grid;grid-template-columns:1fr;gap:12px;
+    }
+    .item{
+      border:1px solid var(--border);border-radius:12px;padding:12px;background:#0c1628;
+      display:grid;grid-template-columns: 1fr auto;gap:8px;align-items:start;
+    }
+    .item h3{margin:0 0 6px;font-size:1rem}
+    .item p{margin:0;color:var(--muted);font-size:0.9rem}
+    .tag{font-size:0.75rem;color:#9fb3c8;background:#0b1322;border:1px solid var(--border);padding:4px 8px;border-radius:999px}
+    .meta{font-size:0.8rem;color:#9fb3c8}
+    .divider{height:1px;background:var(--border);margin:14px 0}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width: 700px){ .grid-2{ grid-template-columns:1fr; } }
+    .metric{
+      background:#0b1322;border:1px solid var(--border);border-radius:12px;padding:12px;
+    }
+    .metric .label{color:var(--muted);font-size:0.85rem;margin-bottom:6px}
+    .metric .value{font-size:1.25rem;font-weight:700}
+    canvas, svg{width:100%;height:220px;background:#0b1322;border:1px solid var(--border);border-radius:12px}
+    .footnote{font-size:0.8rem;color:var(--muted);margin-top:10px}
+    .inline-link{color:var(--accent2);text-decoration:none}
+    .status-good{color:var(--accent)}
+    .status-warn{color:var(--warn)}
+    .status-bad{color:var(--danger)}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Planet Pulse — Environmental news aggregator and visual dashboard</h1>
+    <p>Track climate, biodiversity, pollution, and policy news with live trends and simple, clear visuals.</p>
+  </header>
+
+  <div class="container">
+    <!-- Left: News & Filters -->
+    <section class="card" aria-labelledby="news-title">
+      <h2 id="news-title">News feed</h2>
+      <div class="sub">Curated headlines across environment domain: climate, air quality, water, biodiversity, energy transition, and policy.</div>
+
+      <div class="controls">
+        <div>
+          <label for="topic">Topic</label>
+          <select id="topic">
+            <option value="all">All topics</option>
+            <option value="climate">Climate</option>
+            <option value="air">Air quality</option>
+            <option value="water">Water</option>
+            <option value="biodiversity">Biodiversity</option>
+            <option value="energy">Energy</option>
+            <option value="policy">Policy</option>
+            <option value="waste">Waste & circularity</option>
+          </select>
+        </div>
+        <div>
+          <label for="region">Region</label>
+          <select id="region">
+            <option value="all">Global</option>
+            <option value="india">India</option>
+            <option value="asia">Asia</option>
+            <option value="eu">Europe</option>
+            <option value="us">United States</option>
+            <option value="africa">Africa</option>
+            <option value="latam">Latin America</option>
+          </select>
+        </div>
+        <div>
+          <label for="source">Source</label>
+          <select id="source">
+            <option value="all">All sources</option>
+            <option value="gov">Gov/agency</option>
+            <option value="ngo">NGO</option>
+            <option value="media">Media</option>
+            <option value="journal">Journal</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <input id="search" type="text" placeholder="Search headlines (e.g., 'renewables', 'COP')" />
+        <button id="refresh" class="btn">Refresh feed</button>
+        <button id="addSource" class="btn btn-secondary">Add custom RSS</button>
+      </div>
+
+      <div class="chips" id="activeFilters"></div>
+      <div class="divider"></div>
+
+      <div class="list" id="feed"></div>
+
+      <div class="footnote">
+        Tip: Use topic + region filters to quickly surface relevant updates. Add trusted RSS endpoints to personalize the feed.
+      </div>
+    </section>
+
+    <!-- Right: Dashboard -->
+    <section class="card" aria-labelledby="dash-title">
+      <h2 id="dash-title">Visual dashboard</h2>
+      <div class="grid-2">
+        <div class="metric">
+          <div class="label">Stories today</div>
+          <div class="value" id="storiesToday">—</div>
+          <div class="meta" id="storiesChange">Change vs. yesterday: —</div>
+        </div>
+        <div class="metric">
+          <div class="label">Climate-positive momentum (7-day)</div>
+          <div class="value" id="momentumScore">—</div>
+          <div class="meta" id="momentumNote">—</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>Trends</h2>
+      <div class="grid-2">
+        <div>
+          <h3 style="margin:6px 0 10px;">Topic distribution</h3>
+          <svg id="topicChart" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+        </div>
+        <div>
+          <h3 style="margin:6px 0 10px;">7-day story volume</h3>
+          <canvas id="volumeChart"></canvas>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>Signals</h2>
+      <div class="list" id="signals">
+        <div class="item">
+          <div>
+            <h3>Air quality alerts trend</h3>
+            <p>Monitoring frequency of air quality alerts across major cities. Useful proxy for seasonal pollution spikes.</p>
+            <span class="tag">Air quality</span>
+          </div>
+          <div class="meta status-warn">Elevated</div>
+        </div>
+        <div class="item">
+          <div>
+            <h3>Renewables investment headlines</h3>
+            <p>Counts of funding and capacity announcements indicate near-term deployment momentum.</p>
+            <span class="tag">Energy</span>
+          </div>
+          <div class="meta status-good">Improving</div>
+        </div>
+        <div class="item">
+          <div>
+            <h3>Extreme weather mentions</h3>
+            <p>Severe heat, flood, and cyclone references across regions. Helps anticipate humanitarian needs.</p>
+            <span class="tag">Climate</span>
+          </div>
+          <div class="meta status-bad">High</div>
+        </div>
+      </div>
+
+      <div class="footnote">
+        Note: Charts use in-page mock data. Connect your RSS/JSON APIs to power live insights.
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ---------- Mock data (replace with live fetches from your APIs/RSS) ----------
+    const MOCK_ITEMS = [
+      { title: "Hyderabad launches urban tree cover drive", topic: "biodiversity", region: "india", source:"gov", summary: "New program aims to plant 1 million native saplings across urban wards.", date: "2025-12-08", link:"#"},
+      { title: "Global methane pact expands with new signatories", topic: "policy", region: "eu", source:"media", summary: "Countries commit to accelerated methane reductions across energy and agriculture.", date: "2025-12-07", link:"#"},
+      { title: "Solar microgrids bring reliable power to coastal villages", topic: "energy", region: "asia", source:"ngo", summary: "Community-led microgrids reduce diesel dependence and emissions.", date: "2025-12-07", link:"#"},
+      { title: "Monsoon resilience: wetlands restoration project shows promise", topic: "water", region: "india", source:"journal", summary: "Study finds restored wetlands buffer flood risks and improve biodiversity.", date: "2025-12-06", link:"#"},
+      { title: "Air quality improves after seasonal crop burning curbs", topic: "air", region: "india", source:"media", summary: "Satellite data suggests fewer hotspots compared to last year.", date: "2025-12-06", link:"#"},
+      { title: "COP outcomes: climate finance mechanisms refined", topic: "climate", region: "global", source:"media", summary: "Negotiators agree on transparency and measurement rules for climate finance.", date: "2025-12-05", link:"#"},
+      { title: "City bans single-use plastics in new policy phase", topic: "waste", region:"us", source:"gov", summary:"Regulation targets retail packaging with phased compliance.", date:"2025-12-05", link:"#"},
+      { title: "Tiger corridors show population recovery trends", topic: "biodiversity", region:"asia", source:"journal", summary:"Long-term monitoring indicates increased connectivity.", date:"2025-12-04", link:"#"},
+      { title: "Heatwave early warning system expanded nationwide", topic:"climate", region:"india", source:"gov", summary:"New stations enhance lead times for extreme heat events.", date:"2025-12-04", link:"#"},
+      { title: "Desalination project cuts industrial freshwater demand", topic:"water", region:"africa", source:"media", summary:"Hybrid systems lower energy intensity and costs.", date:"2025-12-03", link:"#"}
+    ];
+
+    const TOPIC_LABELS = {
+      climate:"Climate", air:"Air quality", water:"Water", biodiversity:"Biodiversity", energy:"Energy", policy:"Policy", waste:"Waste & circularity"
+    };
+
+    // ---------- State ----------
+    const state = {
+      topic: "all",
+      region: "all",
+      source: "all",
+      search: "",
+      customFeeds: []
+    };
+
+    // ---------- Elements ----------
+    const feedEl = document.getElementById('feed');
+    const topicEl = document.getElementById('topic');
+    const regionEl = document.getElementById('region');
+    const sourceEl = document.getElementById('source');
+    const searchEl = document.getElementById('search');
+    const refreshBtn = document.getElementById('refresh');
+    const addSourceBtn = document.getElementById('addSource');
+    const activeFiltersEl = document.getElementById('activeFilters');
+
+    const storiesTodayEl = document.getElementById('storiesToday');
+    const storiesChangeEl = document.getElementById('storiesChange');
+    const momentumScoreEl = document.getElementById('momentumScore');
+    const momentumNoteEl = document.getElementById('momentumNote');
+
+    const topicChartEl = document.getElementById('topicChart');
+    const volumeChartEl = document.getElementById('volumeChart');
+
+    // ---------- Helpers ----------
+    function fmtDate(d){
+      try{ return new Date(d).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}); }
+      catch{ return d; }
+    }
+    function esc(s){ return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function summarizeTopicCounts(items){
+      const counts = { climate:0, air:0, water:0, biodiversity:0, energy:0, policy:0, waste:0 };
+      items.forEach(i => { if(counts[i.topic] !== undefined) counts[i.topic]++; });
+      return counts;
+    }
+    function filterItems(){
+      return MOCK_ITEMS.filter(i => {
+        const byTopic = state.topic === 'all' || i.topic === state.topic;
+        const byRegion = state.region === 'all' || i.region === state.region;
+        const bySource = state.source === 'all' || i.source === state.source;
+        const bySearch = !state.search || (i.title.toLowerCase().includes(state.search) || i.summary.toLowerCase().includes(state.search));
+        return byTopic && byRegion && bySource && bySearch;
+      });
+    }
+
+    // ---------- Render Feed ----------
+    function renderFeed(){
+      const items = filterItems();
+      activeFiltersEl.innerHTML = '';
+      const chips = [
+        state.topic==='all'?null:`Topic: ${TOPIC_LABELS[state.topic]||state.topic}`,
+        state.region==='all'?null:`Region: ${state.region}`,
+        state.source==='all'?null:`Source: ${state.source}`,
+        state.search?`Search: "${state.search}"`:null
+      ].filter(Boolean);
+      chips.forEach(c => {
+        const span = document.createElement('span');
+        span.className = 'chip';
+        span.textContent = c;
+        activeFiltersEl.appendChild(span);
+      });
+
+      feedEl.innerHTML = '';
+      if(items.length === 0){
+        const empty = document.createElement('div');
+        empty.className = 'item';
+        empty.innerHTML = `<div><h3>No results</h3><p>Try clearing filters or changing keywords.</p></div><div class="meta">—</div>`;
+        feedEl.appendChild(empty);
+        return;
+      }
+
+      items.forEach(i => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          <div>
+            <h3>${esc(i.title)}</h3>
+            <p>${esc(i.summary)}</p>
+            <div class="row" style="margin-top:6px;">
+              <span class="tag">${TOPIC_LABELS[i.topic]||esc(i.topic)}</span>
+              <span class="tag">${esc(i.region)}</span>
+              <span class="tag">${esc(i.source)}</span>
+            </div>
+          </div>
+          <div class="meta">
+            <div>${fmtDate(i.date)}</div>
+            <div style="margin-top:6px;"><a class="inline-link" href="${esc(i.link)}">Open</a></div>
+          </div>
+        `;
+        feedEl.appendChild(div);
+      });
+    }
+
+    // ---------- Dashboard Metrics ----------
+    function renderMetrics(){
+      const today = new Date().toISOString().slice(0,10);
+      const yesterday = new Date(Date.now()-24*3600*1000).toISOString().slice(0,10);
+
+      const items = filterItems();
+      const todayCount = items.filter(i => i.date === today).length;
+      const yCount = items.filter(i => i.date === yesterday).length;
+      const diff = todayCount - yCount;
+      const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+      storiesTodayEl.textContent = todayCount.toString();
+      storiesChangeEl.textContent = `Change vs. yesterday: ${diffStr}`;
+
+      // Momentum: ratio of positive to negative sentiment (mock: topic weights)
+      const weights = { energy:+2, policy:+1, biodiversity:+1, water:+0, air:-1, climate:-1, waste:+0 };
+      const scoreRaw = items.reduce((acc,i)=>acc + (weights[i.topic]||0), 0);
+      const score = Math.round(50 + scoreRaw*3); // center 50
+      momentumScoreEl.textContent = `${score}`;
+      momentumNoteEl.textContent = score >= 55 ? "Positive policy/energy signals" : (score <= 45 ? "Elevated risk mentions" : "Mixed signals");
+      momentumNoteEl.className = 'meta ' + (score>=55?'status-good':(score<=45?'status-bad':''));
+
+      // Topic distribution chart (donut via SVG arcs)
+      renderDonut(topicChartEl, summarizeTopicCounts(items));
+
+      // 7-day volume chart
+      renderVolume(volumeChartEl, items);
+    }
+
+    // ---------- Donut Chart ----------
+    function renderDonut(svgEl, counts){
+      const total = Object.values(counts).reduce((a,b)=>a+b,0) || 1;
+      const colors = { climate:"#ef4444", air:"#f59e0b", water:"#22d3ee", biodiversity:"#22c55e", energy:"#58a6ff", policy:"#a78bfa", waste:"#94a3b8" };
+      const labels = Object.keys(counts);
+      let acc = 0;
+      const cx=50, cy=50, r=40;
+
+      while(svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+
+      labels.forEach(k=>{
+        const val = counts[k];
+        const frac = val/total;
+        const start = acc*2*Math.PI;
+        const end = (acc+frac)*2*Math.PI;
+        acc += frac;
+
+        const x1 = cx + r*Math.sin(start), y1 = cy - r*Math.cos(start);
+        const x2 = cx + r*Math.sin(end),   y2 = cy - r*Math.cos(end);
+        const largeArc = frac > 0.5 ? 1 : 0;
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+        path.setAttribute("d", `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`);
+        path.setAttribute("fill", colors[k]);
+        path.setAttribute("opacity","0.9");
+        svgEl.appendChild(path);
+      });
+
+      // Inner hole
+      const hole = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      hole.setAttribute("cx",cx); hole.setAttribute("cy",cy); hole.setAttribute("r",22);
+      hole.setAttribute("fill", "#0b1322");
+      svgEl.appendChild(hole);
+
+      // Legend (simple inline HTML below chart)
+      if(!svgEl.nextSibling || !svgEl.nextSibling.classList || !svgEl.nextSibling.classList.contains('legend')){
+        const legend = document.createElement('div');
+        legend.className='legend';
+        legend.style.display='grid'; legend.style.gridTemplateColumns='repeat(2,1fr)'; legend.style.gap='6px';
+        legend.style.marginTop='8px'; legend.style.fontSize='0.85rem'; legend.style.color='#9fb3c8';
+        svgEl.parentElement.appendChild(legend);
+      }
+      const legendEl = svgEl.parentElement.querySelector('.legend');
+      legendEl.innerHTML = '';
+      Object.keys(counts).forEach(k=>{
+        const div=document.createElement('div');
+        div.innerHTML = `<span style="display:inline-block;width:10px;height:10px;background:${colors[k]};border-radius:3px;margin-right:6px;"></span>${TOPIC_LABELS[k]}: ${counts[k]}`;
+        legendEl.appendChild(div);
+      });
+    }
+
+    // ---------- Volume Chart (Canvas) ----------
+    function renderVolume(canvas, items){
+      const ctx = canvas.getContext('2d');
+      const days = [...Array(7)].map((_,i)=> {
+        const d = new Date(Date.now() - (6-i)*24*3600*1000);
+        return d.toISOString().slice(0,10);
+      });
+      const counts = days.map(d => items.filter(i=>i.date===d).length);
+
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+      ctx.clearRect(0,0,w,h);
+
+      // Axes
+      ctx.strokeStyle = '#1f2937';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(40, h-30); ctx.lineTo(w-12, h-30); // x
+      ctx.moveTo(40, 18);   ctx.lineTo(40, h-30);   // y
+      ctx.stroke();
+
+      // Labels
+      ctx.fillStyle = '#9fb3c8';
+      ctx.font = '12px Segoe UI';
+      days.forEach((d, i) => {
+        const x = 40 + i*( (w-52) / 6 );
+        ctx.fillText(new Date(d).toLocaleDateString('en-IN', {day:'2-digit', month:'short'}), x-14, h-12);
+      });
+
+      const max = Math.max(...counts, 4);
+      const scaleY = (h-60) / max;
+
+      // Line
+      ctx.strokeStyle = '#58a6ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      counts.forEach((c, i) => {
+        const x = 40 + i*( (w-52) / 6 );
+        const y = (h-30) - c*scaleY;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+
+      // Points
+      ctx.fillStyle = '#58a6ff';
+      counts.forEach((c, i) => {
+        const x = 40 + i*( (w-52) / 6 );
+        const y = (h-30) - c*scaleY;
+        ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fill();
+      });
+
+      // Bars (faint)
+      ctx.fillStyle = 'rgba(57,217,138,0.25)';
+      counts.forEach((c, i) => {
+        const x = 40 + i*( (w-52) / 6 ) - 10;
+        const y = (h-30) - c*scaleY;
+        ctx.fillRect(x, y, 20, c*scaleY);
+      });
+    }
+
+    // ---------- Events ----------
+    topicEl.addEventListener('change', ()=>{ state.topic = topicEl.value; update(); });
+    regionEl.addEventListener('change', ()=>{ state.region = regionEl.value; update(); });
+    sourceEl.addEventListener('change', ()=>{ state.source = sourceEl.value; update(); });
+    searchEl.addEventListener('input', ()=>{
+      state.search = searchEl.value.trim().toLowerCase();
+      update();
+    });
+    refreshBtn.addEventListener('click', ()=>{
+      // Placeholder: re-render. Replace with fetch from your feed endpoints.
+      flash(refreshBtn);
+      update();
+    });
+    addSourceBtn.addEventListener('click', ()=>{
+      const url = prompt('Enter RSS/JSON feed URL (https://...)');
+      if(url){
+        state.customFeeds.push(url);
+        alert('Custom feed added. Replace mock loader with a real fetch to include items.');
+      }
+    });
+
+    function flash(el){
+      const original = el.style.transform;
+      el.style.transform = 'translateY(1px)';
+      setTimeout(()=>{ el.style.transform = original; }, 120);
+    }
+
+    function update(){
+      renderFeed();
+      renderMetrics();
+    }
+
+    // Initial render
+    window.addEventListener('DOMContentLoaded', update);
+    window.addEventListener('resize', ()=> renderMetrics());
+  </script>
+</body>
+</html>
+```

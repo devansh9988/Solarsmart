@@ -1,0 +1,359 @@
+**Defining fields for solar tool**
+
+Alright, I need to outline the fields for the calculator: monthly electricity consumption (kWh), system size (kW), average sun hours per day, efficiency (%), tariff (INR/kWh), system cost (INR per kW), maintenance cost (% of system cost), and net metering credit rate (INR/kWh, possibly same as the tariff). For outputs, the tool will calculate annual generation, bill offset, net savings, payback period, and CO2 avoided (assuming a grid emission factor of 0.82 in India). I’ll include the default CO2 value as input, but without mentioning it specifically. Now, I’ll build this out!
+### Solar power savings estimation tool (SolarSmart)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>solarsmart</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --accent: #22c55e;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      background: radial-gradient(1200px 600px at 10% 10%, #0b1220, var(--bg));
+      color: var(--text);
+    }
+    header {
+      padding: 32px 20px 16px;
+      text-align: center;
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .container {
+      max-width: 1100px;
+      margin: 24px auto 60px;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: linear-gradient(180deg, #0e1626, var(--panel));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .card h2 {
+      margin: 6px 0 14px;
+      font-size: 1.15rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0b1322;
+      color: var(--text);
+      outline: none;
+    }
+    input:focus, select:focus {
+      border-color: #2f3b4f;
+      box-shadow: 0 0 0 2px rgba(34,197,94,0.15);
+    }
+    .row { margin-bottom: 14px; }
+    .muted {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #052e12;
+      border: none;
+      padding: 12px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .btn:active { transform: translateY(1px); }
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 700px) {
+      .results { grid-template-columns: 1fr; }
+    }
+    .metric {
+      background: #0b1322;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .metric .label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+    }
+    .metric .value {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .footnote {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .divider {
+      height: 1px; background: var(--border); margin: 16px 0;
+    }
+    .small {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .chips {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
+    }
+    .chip {
+      border: 1px dashed var(--border);
+      background: #0b1322;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SolarSmart — Solar power savings estimator</h1>
+    <p>Plan your rooftop solar with clear numbers on energy, savings, payback, and emissions avoided.</p>
+  </header>
+
+  <div class="container">
+    <!-- Inputs -->
+    <section class="card" aria-labelledby="inputs-title">
+      <h2 id="inputs-title">Inputs</h2>
+      <div class="grid">
+        <div class="row">
+          <label for="consumption">Monthly electricity consumption (kWh)</label>
+          <input id="consumption" type="number" min="0" step="1" value="450" />
+        </div>
+        <div class="row">
+          <label for="tariff">Tariff (INR/kWh)</label>
+          <input id="tariff" type="number" min="0" step="0.01" value="8.0" />
+        </div>
+        <div class="row">
+          <label for="systemSize">System size (kW)</label>
+          <input id="systemSize" type="number" min="0" step="0.1" value="5.0" />
+        </div>
+        <div class="row">
+          <label for="sunHours">Average sun hours per day</label>
+          <input id="sunHours" type="number" min="0" step="0.1" value="5.5" />
+        </div>
+        <div class="row">
+          <label for="efficiency">System performance ratio (%)</label>
+          <input id="efficiency" type="number" min="0" max="100" step="1" value="80" />
+          <div class="muted">Accounts for losses (temperature, wiring, inverter, dust). Typical range: 70–85.</div>
+        </div>
+        <div class="row">
+          <label for="costPerKW">System cost (INR per kW)</label>
+          <input id="costPerKW" type="number" min="0" step="1000" value="65000" />
+        </div>
+        <div class="row">
+          <label for="maintenancePct">Annual maintenance (% of system cost)</label>
+          <input id="maintenancePct" type="number" min="0" max="100" step="0.5" value="1.5" />
+        </div>
+        <div class="row">
+          <label for="netMeterRate">Net metering credit (INR/kWh)</label>
+          <input id="netMeterRate" type="number" min="0" step="0.01" value="4.0" />
+          <div class="muted">If your utility credits exported energy at a different rate than retail tariff.</div>
+        </div>
+        <div class="row">
+          <label for="emissionFactor">Grid emission factor (kg CO₂/kWh)</label>
+          <input id="emissionFactor" type="number" min="0" step="0.01" value="0.82" />
+        </div>
+        <div class="row">
+          <label for="degradation">Annual panel degradation (%/year)</label>
+          <input id="degradation" type="number" min="0" max="5" step="0.1" value="0.8" />
+        </div>
+      </div>
+      <button class="btn" id="estimateBtn">Estimate savings</button>
+      <div class="chips">
+        <span class="chip">Energy domain</span>
+        <span class="chip">Rooftop solar</span>
+        <span class="chip">Hyderabad-ready</span>
+      </div>
+    </section>
+
+    <!-- Results -->
+    <section class="card" aria-labelledby="results-title">
+      <h2 id="results-title">Results</h2>
+
+      <div class="results">
+        <div class="metric">
+          <div class="label">Estimated annual generation</div>
+          <div class="value" id="annualGen">— kWh</div>
+          <div class="small" id="capacityFactorHint"></div>
+        </div>
+        <div class="metric">
+          <div class="label">Annual bill offset</div>
+          <div class="value" id="annualOffset">— kWh</div>
+          <div class="small" id="offsetInINR">— INR</div>
+        </div>
+        <div class="metric">
+          <div class="label">Net annual savings after maintenance</div>
+          <div class="value" id="netSavingsINR">— INR</div>
+          <div class="small" id="maintenanceINR">Maintenance: — INR</div>
+        </div>
+        <div class="metric">
+          <div class="label">Simple payback period</div>
+          <div class="value" id="paybackYears">— years</div>
+          <div class="small" id="systemCostINR">System cost: — INR</div>
+        </div>
+        <div class="metric">
+          <div class="label">First-year CO₂ avoided</div>
+          <div class="value" id="co2Avoided">— tonnes</div>
+          <div class="small" id="emissionsNote">Assumes emission factor input.</div>
+        </div>
+        <div class="metric">
+          <div class="label">Year-10 generation (degradation adjusted)</div>
+          <div class="value" id="genYear10">— kWh</div>
+          <div class="small">Uses linear degradation for a quick estimate.</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>Assumptions and notes</h2>
+      <ul class="small">
+        <li>Daily generation = System size × Sun hours × Performance ratio.</li>
+        <li>Annual generation = Daily generation × 365.</li>
+        <li>Annual bill offset limited to your annual consumption; excess uses net metering credit rate.</li>
+        <li>Simple payback = System cost ÷ Net annual savings (first year).</li>
+        <li>CO₂ avoided = Annual offset × Emission factor.</li>
+      </ul>
+
+      <div class="footnote">
+        Tip: Tune sun hours and tariff for your location and utility slab. Hyderabad often sees 5–6 effective sun hours on clear days.
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function formatINR(n) {
+      return n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    }
+    function formatINRMoney(n) {
+      return n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+    }
+    function formatKWh(n) {
+      return `${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })} kWh`;
+    }
+    function formatYears(n) {
+      if (!isFinite(n) || n <= 0) return '— years';
+      return `${n.toFixed(1)} years`;
+    }
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function estimate() {
+      const monthlyConsumption = Number(document.getElementById('consumption').value) || 0;
+      const tariff = Number(document.getElementById('tariff').value) || 0;
+      const systemSizeKW = Number(document.getElementById('systemSize').value) || 0;
+      const sunHours = Number(document.getElementById('sunHours').value) || 0;
+      const perfRatioPct = clamp(Number(document.getElementById('efficiency').value) || 0, 0, 100);
+      const costPerKW = Number(document.getElementById('costPerKW').value) || 0;
+      const maintenancePct = clamp(Number(document.getElementById('maintenancePct').value) || 0, 0, 100);
+      const netMeterRate = Number(document.getElementById('netMeterRate').value) || 0;
+      const emissionFactor = Number(document.getElementById('emissionFactor').value) || 0;
+      const degradationPct = clamp(Number(document.getElementById('degradation').value) || 0, 0, 5);
+
+      // Derived values
+      const perfRatio = perfRatioPct / 100; // 0..1
+      const dailyGen = systemSizeKW * sunHours * perfRatio; // kWh/day
+      const annualGen = dailyGen * 365; // kWh/year
+
+      const annualConsumption = monthlyConsumption * 12; // kWh/year
+
+      // Offset split: self-consumed vs exported
+      const selfConsumedKWh = Math.min(annualGen, annualConsumption);
+      const exportedKWh = Math.max(annualGen - annualConsumption, 0);
+
+      const selfConsumedINR = selfConsumedKWh * tariff;
+      const exportedINR = exportedKWh * netMeterRate;
+      const annualSavingsINR = selfConsumedINR + exportedINR;
+
+      const systemCostINR = systemSizeKW * costPerKW;
+      const maintenanceINR = (maintenancePct / 100) * systemCostINR;
+
+      const netAnnualSavingsINR = Math.max(annualSavingsINR - maintenanceINR, 0);
+      const paybackYears = netAnnualSavingsINR > 0 ? (systemCostINR / netAnnualSavingsINR) : Infinity;
+
+      const co2AvoidedKg = selfConsumedKWh * emissionFactor; // kg CO2
+      const co2AvoidedTonnes = co2AvoidedKg / 1000;
+
+      // Degradation simple estimate for Year-10 (linear)
+      const genYear10 = annualGen * (1 - degradationPct / 100 * 10);
+
+      // Capacity factor hint
+      const capacityFactor = (sunHours * perfRatio) / 24; // ~ fraction
+      const capacityFactorPct = (capacityFactor * 100).toFixed(1);
+
+      // Update UI
+      document.getElementById('annualGen').textContent = formatKWh(annualGen);
+      document.getElementById('capacityFactorHint').textContent = `Approx. capacity factor: ${capacityFactorPct}%`;
+
+      document.getElementById('annualOffset').textContent = formatKWh(selfConsumedKWh);
+      document.getElementById('offsetInINR').textContent = `${formatINRMoney(selfConsumedINR)} saved on bills; ${formatINRMoney(exportedINR)} credit`;
+
+      document.getElementById('netSavingsINR').textContent = formatINRMoney(netAnnualSavingsINR);
+      document.getElementById('maintenanceINR').textContent = `Maintenance: ${formatINRMoney(maintenanceINR)} / year`;
+
+      document.getElementById('paybackYears').textContent = formatYears(paybackYears);
+      document.getElementById('systemCostINR').textContent = `System cost: ${formatINRMoney(systemCostINR)}`;
+
+      document.getElementById('co2Avoided').textContent = `${co2AvoidedTonnes.toFixed(2)} tonnes`;
+      document.getElementById('genYear10').textContent = formatKWh(Math.max(genYear10, 0));
+    }
+
+    document.getElementById('estimateBtn').addEventListener('click', estimate);
+
+    // Run once on load with defaults
+    window.addEventListener('DOMContentLoaded', estimate);
+  </script>
+</body>
+</html>
+```
